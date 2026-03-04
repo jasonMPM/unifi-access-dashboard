@@ -1,0 +1,12 @@
+version: "3.9"
+services:
+  unifi-access-dashboard:
+    build: .
+    container_name: unifi-access-dashboard
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/data
+    environment:
+      - TZ=America/Chicago
