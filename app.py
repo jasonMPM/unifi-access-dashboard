@@ -12,12 +12,12 @@ log = logging.getLogger(__name__)
 
 app = Flask(__name__, static_folder="static", static_url_path="")
 
-UNIFI_HOST     = os.environ.get("UNIFI_HOST", "10.0.0.1")
-UNIFI_PORT     = int(os.environ.get("UNIFI_PORT", "12445"))
-UNIFI_TOKEN    = os.environ.get("UNIFI_API_TOKEN", "")
-WEBHOOK_SECRET = os.environ.get("WEBHOOK_SECRET", "")
-DB_PATH        = os.environ.get("DB_PATH", "/data/dashboard.db")
-TZ             = os.environ.get("TZ", "America/Chicago")
+UNIFI_HOST      = os.environ.get("UNIFI_HOST", "10.0.0.1")
+UNIFI_PORT      = int(os.environ.get("UNIFI_PORT", "12445"))
+UNIFI_TOKEN     = os.environ.get("UNIFI_API_TOKEN", "")
+WEBHOOK_SECRET  = os.environ.get("WEBHOOK_SECRET", "")
+DB_PATH         = os.environ.get("DB_PATH", "/data/dashboard.db")
+TZ              = os.environ.get("TZ", "America/Chicago")
 
 UNIFI_BASE = f"https://{UNIFI_HOST}:{UNIFI_PORT}/api/v1/developer"
 
@@ -66,10 +66,9 @@ def sync_unifi_users():
         users = r.json().get("data", [])
         with get_db() as db:
             for u in users:
-                # Use the same ID field we see in webhooks
                 actor_id = u.get("id")
                 if not actor_id:
-                    continue  # skip malformed entries
+                    continue
 
                 full_name = (u.get("full_name") or "").strip()
                 if not full_name:
@@ -96,12 +95,6 @@ def sync_unifi_users():
 
 
 def verify_signature(payload_bytes, sig_header):
-    """Validate UniFi Access webhook signature.
-
-    Header name : Signature
-    Header value: t=<unix_timestamp>,v1=<hex_hmac_sha256>
-    Signed data : f"{timestamp}.{raw_body}"
-    """
     if not WEBHOOK_SECRET:
         return True
     if not sig_header:
@@ -110,7 +103,7 @@ def verify_signature(payload_bytes, sig_header):
     try:
         parts = dict(p.split("=", 1) for p in sig_header.split(","))
         timestamp = parts.get("t", "")
-        received = parts.get("v1", "")
+        received  = parts.get("v1", "")
         if not timestamp or not received:
             log.warning("Signature header missing t or v1: %s", sig_header)
             return False
@@ -143,13 +136,13 @@ def receive_webhook():
     except Exception:
         return jsonify({"error": "bad json"}), 400
 
-    log.info("Webhook received: %s", json.dumps(payload)[:300])
+    log.info("Webhook received: %s", json.dumps(payload)[:400])
 
     event = payload.get("event") or payload.get("event_object_id", "") or ""
 
-    data = payload.get("data") or {}
+    data      = payload.get("data") or {}
     actor_obj = data.get("actor") or {}
-    actor = actor_obj.get("id")
+    actor     = actor_obj.get("id")
 
     if "access.door.unlock" not in str(event):
         return jsonify({"status": "ignored"}), 200
@@ -158,22 +151,50 @@ def receive_webhook():
         log.warning("Webhook has no actor id: %s", json.dumps(payload)[:300])
         return jsonify({"error": "no actor"}), 400
 
-    event_meta = data.get("event") or {}
-    ts_ms = event_meta.get("published")
-    if ts_ms:
-        ts = datetime.fromtimestamp(ts_ms / 1000.0, tz=pytz.utc)
-    else:
-        ts_raw = (
-            payload.get("timestamp")
-            or payload.get("created_at")
-            or datetime.utcnow().isoformat()
-        )
-        ts = datetime.fromisoformat(str(ts_raw).replace("Z", "+00:00"))
-
+    # ----------------------------------------------------------------
+    # Timestamp resolution — checked in priority order:
+    #  1. Top-level "timestamp" key (milliseconds epoch) — UniFi Access standard
+    #  2. data.event.published  (milliseconds epoch)
+    #  3. Top-level ISO string fields
+    #  4. Fall back to NOW in the configured local timezone
+    # ----------------------------------------------------------------
     tz = pytz.timezone(TZ)
+    ts = None
+
+    # 1. Top-level timestamp (ms)
+    top_ts_ms = payload.get("timestamp")
+    if top_ts_ms and isinstance(top_ts_ms, (int, float)) and top_ts_ms > 1e10:
+        ts = datetime.fromtimestamp(top_ts_ms / 1000.0, tz=pytz.utc)
+        log.info("Timestamp source: top-level ms (%s)", top_ts_ms)
+
+    # 2. data.event.published (ms)
+    if ts is None:
+        event_meta = data.get("event") or {}
+        published = event_meta.get("published")
+        if published and isinstance(published, (int, float)) and published > 1e10:
+            ts = datetime.fromtimestamp(published / 1000.0, tz=pytz.utc)
+            log.info("Timestamp source: data.event.published (%s)", published)
+
+    # 3. ISO string fields
+    if ts is None:
+        for field in ("created_at", "time", "occurred_at"):
+            raw_ts = payload.get(field)
+            if raw_ts:
+                try:
+                    ts = datetime.fromisoformat(str(raw_ts).replace("Z", "+00:00"))
+                    log.info("Timestamp source: ISO field '%s' (%s)", field, raw_ts)
+                    break
+                except Exception:
+                    pass
+
+    # 4. Fallback — use local now so the date bucket is always correct
+    if ts is None:
+        ts = datetime.now(tz=tz)
+        log.warning("Timestamp source: fallback to local now")
+
     ts_local = ts.astimezone(tz)
-    date = ts_local.strftime("%Y-%m-%d")
-    ts_str = ts_local.strftime("%H:%M:%S")
+    date     = ts_local.strftime("%Y-%m-%d")
+    ts_str   = ts_local.strftime("%H:%M:%S")
 
     with get_db() as db:
         db.execute(
@@ -182,13 +203,13 @@ def receive_webhook():
         )
         db.commit()
 
-    log.info("Badge-in recorded: actor=%s date=%s ts=%s", actor, date, ts_str)
+    log.info("Badge-in recorded: actor=%s date=%s ts=%s (tz=%s)", actor, date, ts_str, TZ)
     return jsonify({"status": "ok"}), 200
 
 
 @app.route("/api/first-badge-status")
 def first_badge_status():
-    date = request.args.get("date", datetime.now().strftime("%Y-%m-%d"))
+    date   = request.args.get("date", datetime.now(pytz.timezone(TZ)).strftime("%Y-%m-%d"))
     cutoff = request.args.get("cutoff", "09:00")  # HH:MM
 
     with get_db() as db:
@@ -213,16 +234,16 @@ def first_badge_status():
 
     result = []
     for r in rows:
-        first = r["first_ts"]
+        first  = r["first_ts"]
         latest = r["latest_ts"]
         status = "ON TIME" if first <= cutoff + ":59" else "LATE"
         result.append(
             {
                 "actor_id": r["actor_id"],
-                "name": r["name"],
+                "name":     r["name"],
                 "first_ts": first,
                 "latest_ts": latest if latest != first else None,
-                "status": status,
+                "status":   status,
             }
         )
 
@@ -237,7 +258,7 @@ def manual_sync():
 
 @app.route("/api/reset-day", methods=["DELETE"])
 def reset_day():
-    date = request.args.get("date", datetime.now().strftime("%Y-%m-%d"))
+    date = request.args.get("date", datetime.now(pytz.timezone(TZ)).strftime("%Y-%m-%d"))
     with get_db() as db:
         cur = db.execute("DELETE FROM badge_events WHERE date = ?", (date,))
         db.commit()
