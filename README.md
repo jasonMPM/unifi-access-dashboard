@@ -62,7 +62,7 @@ SSH into your Unraid server and run:
 
 ```bash
 cd /mnt/user/appdata
-git clone https://github.com/<your-user>/<your-repo>.git unifi-access-dashboard
+git clone https://github.com/jasonMPM/unifi-access-dashboard.git unifi-access-dashboard
 cd unifi-access-dashboard
 ```
 
