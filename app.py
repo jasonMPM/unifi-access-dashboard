@@ -25,7 +25,6 @@ def get_db():
     return conn
 
 
-@app.before_first_request
 def init_db():
     conn = get_db()
     conn.executescript("""
@@ -248,12 +247,15 @@ def send_static(path):
 
 # ── Startup ───────────────────────────────────────────────────────────────────
 
+# Initialise DB and kick off background scheduler at import time
+# (works whether started via `flask run` or `python app.py`)
+with app.app_context():
+    init_db()
+    sync_unifi_users()
+
 scheduler = BackgroundScheduler()
 scheduler.add_job(sync_unifi_users, "interval", hours=6)
 scheduler.start()
 
 if __name__ == "__main__":
-    with app.app_context():
-        init_db()
-        sync_unifi_users()
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
