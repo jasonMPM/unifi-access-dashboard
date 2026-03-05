@@ -1,54 +1,64 @@
-# UniFi Access Badge-In Dashboard (V3)
+# UniFi Access Badge-In Dashboard
 
-A Dockerised Flask + SQLite web app that receives UniFi Access `access.door.unlock` webhooks,
-resolves UUIDs to real user names via the UniFi Access API, and displays a modern dark
-attendance dashboard with on-time / late status, first + latest badge times, and a test reset button.
-
----
-
-## Features
-
-- Receives webhooks from the UniFi Access developer API or legacy Alarm Manager format
-- Resolves badge holder UUIDs to real names via the UniFi Access REST API
-- User name cache stored in SQLite, auto-refreshed every 6 hours
-- **First Badge In** column — locked to the earliest entry of the day, never overwritten
-- **Latest Badge In** column — updates with each subsequent badge-in
-- ON TIME / LATE status based on a configurable cutoff time (green / red chips)
-- **Sync Users** button — manually pulls the latest user list from your controller
-- **Reset Day** button — confirmation modal wipes all records for the selected date (testing only)
-- Fully Dockerised — single container, SQLite persisted to a host volume
+A Dockerised Flask + SQLite attendance dashboard that receives real-time door unlock
+webhooks from the **UniFi Access Developer API**, resolves badge holders to real names,
+and displays a live attendance table with first/latest badge times and ON TIME / LATE status.
 
 ---
 
-## Project layout
+## Requirements
 
+- Unraid server (or any Linux host with Docker + Docker Compose)
+- UniFi OS console running **UniFi Access 1.9.1 or later**
+- UniFi Access on the same LAN as your Unraid server
+- Port **12445** open from your Unraid host to the UniFi controller IP
+- A UniFi Access **Developer API token** (NOT a UniFi OS / Network API token)
+
+---
+
+## Step 1 — Open firewall port 12445
+
+The UniFi Access Open API runs exclusively on **port 12445** (HTTPS, self-signed cert).
+Your Unraid server and any machine running the dashboard must be able to reach it.
+
+In UniFi Network → Settings → Firewall & Security → Firewall Rules, add a **LAN IN** rule:
+
+| Field | Value |
+|---|---|
+| Action | Accept |
+| Protocol | TCP |
+| Destination Port | 12445 |
+| Source | your LAN subnet (e.g. `10.0.0.0/8`) |
+
+Verify from your Unraid SSH terminal or PowerShell:
+
+```bash
+# Linux / Unraid:
+nc -zv 10.0.0.1 12445
+
+# Windows PowerShell:
+Test-NetConnection -ComputerName 10.0.0.1 -Port 12445
+# TcpTestSucceeded : True  ← required
 ```
-.
-├── app.py                  # Flask application + API endpoints
-├── requirements.txt        # Python dependencies
-├── Dockerfile              # Container image definition
-├── docker-compose.yml      # Compose file for Unraid deployment
-├── .env.example            # Environment variable template (copy to .env)
-├── .gitignore
-└── static/
-    └── index.html          # Single-page dashboard UI
-```
 
 ---
 
-## Step 1 — Generate a UniFi Access API token
+## Step 2 — Generate a UniFi Access Developer API token
 
-1. Open your **UniFi OS** web interface (e.g. `https://192.168.1.1`).
-2. Navigate to **UniFi Access → Settings → Integrations** (or **Developer API**).
-3. Click **Create API Key**, give it a name (e.g. `Dashboard`), and copy the token.
+> ⚠️ This token is different from the UniFi OS / Network API token.
+> Creating it in the wrong place will result in 401 Unauthorized errors.
 
-> Use a dedicated read-only admin account to generate the token where possible.
+1. Open your UniFi OS console at `https://<controller-ip>` in a browser.
+2. Navigate into the **Access** app (blue door icon).
+3. Go to **Settings → General → Advanced → API Token**.
+4. Click **Create New**, enter a name and validity period, enable **all permission scopes**.
+5. Click **Create** and **immediately copy the token** — it is shown only once.
 
 ---
 
-## Step 2 — Clone the repo on your Unraid server
+## Step 3 — Clone the repo on Unraid
 
-SSH into Unraid and run:
+SSH into your Unraid server and run:
 
 ```bash
 cd /mnt/user/appdata
@@ -58,146 +68,155 @@ cd unifi-access-dashboard
 
 ---
 
-## Step 3 — Create your .env file
+## Step 4 — Create your .env file
 
 ```bash
 cp .env.example .env
 nano .env
 ```
 
-Fill in your values:
+Fill in all values:
 
 ```dotenv
-UNIFI_HOST=192.168.1.1          # IP address of your UniFi OS controller
-UNIFI_API_TOKEN=YOUR_TOKEN_HERE # Bearer token from Step 1
-TZ=America/Chicago              # Your local timezone
-DB_PATH=/data/dashboard.db      # Path inside the container — do not change
+UNIFI_HOST=10.0.0.1              # IP of your UniFi OS controller
+UNIFI_PORT=12445                 # UniFi Access Open API port — do not change
+UNIFI_API_TOKEN=YOUR_TOKEN_HERE  # Developer API token from Step 2
+WEBHOOK_SECRET=                  # Leave blank until Step 6 gives you the secret
+TZ=America/Chicago               # Your local timezone
+DB_PATH=/data/dashboard.db       # Path inside the container — do not change
 ```
 
 > **Never commit `.env` to git.** It is listed in `.gitignore`.
 
 ---
 
-## Step 4 — Build and start the container
+## Step 5 — Build and start the container
 
 ```bash
-docker compose up -d --build
+cd /mnt/user/appdata/unifi-access-dashboard
+/usr/bin/docker compose up -d --build
 ```
 
 The container will:
 - Build the image from the local `Dockerfile`
 - Start Flask on port **8000**
 - Create `/data/dashboard.db` inside the container (mapped to `./data/` on the host)
-- Immediately sync users from your UniFi Access controller
+- Immediately sync all users from your UniFi Access controller
 - Schedule a user cache refresh every 6 hours
 
 Verify it is running:
 
 ```bash
-docker ps
+/usr/bin/docker ps
 # Should show: unifi-access-dashboard   Up X seconds
-```
 
-Check logs:
-
-```bash
-docker logs -f unifi-access-dashboard
+/usr/bin/docker logs -f unifi-access-dashboard
+# Should show: INFO:app:Synced X users from UniFi Access
 ```
 
 ---
 
-## Step 5 — Register the webhook with UniFi Access (run once)
+## Step 6 — Register the webhook with UniFi Access
 
-Run this from any machine on the same LAN as your controller.
-Replace `192.168.1.1`, `YOUR_TOKEN_HERE`, and `YOUR_UNRAID_IP` with your real values:
+This registers your dashboard URL with UniFi Access so it receives door unlock events.
+Run this **once** from inside the container console.
+
+### Open the container console
+
+In Unraid UI → **Docker tab** → click `unifi-access-dashboard` → **Console**
+
+Then paste this Python script (replace values with yours):
 
 ```bash
-curl -k -X POST "https://192.168.1.1:45/api1/webhooks/endpoints" \
-  -H "Authorization: Bearer YOUR_TOKEN_HERE" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Dashboard Unlock Events",
-    "endpoint": "http://YOUR_UNRAID_IP:8000/api/unifi-access",
+python3 -c "
+import requests, urllib3
+urllib3.disable_warnings()
+
+HOST     = '10.0.0.1'
+TOKEN    = 'YOUR_ACCESS_DEVELOPER_TOKEN_HERE'
+DASH_URL = 'http://YOUR_UNRAID_IP:8000/api/unifi-access'
+
+r = requests.post(
+    f'https://{HOST}:12445/api/v1/developer/webhooks/endpoints',
+    headers={
+        'Authorization': f'Bearer {TOKEN}',
+        'Content-Type': 'application/json'
+    },
+    json={
+        'name': 'Dashboard Unlock Events',
+        'endpoint': DASH_URL,
+        'events': ['access.door.unlock']
+    },
+    verify=False,
+    timeout=10
+)
+print('Status:', r.status_code)
+print('Response:', r.text)
+"
+```
+
+A successful response looks like:
+
+```json
+{
+  "code": "SUCCESS",
+  "data": {
+    "endpoint": "http://10.2.0.11:8000/api/unifi-access",
     "events": ["access.door.unlock"],
-    "headers": { "X-Source": "unifi-access" }
-  }'
+    "id": "afdb4271-...",
+    "name": "Dashboard Unlock Events",
+    "secret": "6e1d30c6ea8fa423"
+  }
+}
 ```
 
-Verify it was registered:
+Copy the **`secret`** value from the response.
+
+### Add the secret to your .env
+
+On Unraid SSH:
 
 ```bash
-curl -k -X GET "https://192.168.1.1:45/api1/webhooks/endpoints" \
-  -H "Authorization: Bearer YOUR_TOKEN_HERE"
+nano /mnt/user/appdata/unifi-access-dashboard/.env
+# Set: WEBHOOK_SECRET=6e1d30c6ea8fa423  (use your actual secret)
 ```
 
-You should see your webhook listed with a unique `id` field.
+Then restart the container to pick up the new value:
 
-> **Note:** The UniFi Access API runs on **port 45** over HTTPS with a self-signed certificate.
-> Always use `-k` with curl, and `verify=False` is already set in the Python code.
+```bash
+/usr/bin/docker compose up -d --build
+```
 
 ---
 
-## Step 6 — Open the dashboard
+## Step 7 — Open the dashboard
 
-In a browser navigate to:
+Navigate to:
 
 ```
 http://<UNRAID-IP>:8000/
 ```
 
-### Using the dashboard
+### Dashboard controls
 
 | Control | Description |
 |---|---|
 | **Date picker** | Choose which day to view |
-| **Badged in by** | Set your on-time cutoff (24-hr format, e.g. `09:00`) |
-| **Refresh** | Reload the table for the selected date and cutoff |
-| **Sync Users** | Immediately pull the latest user list from UniFi Access |
-| **Reset Day** | Delete all badge-in records for the selected date (testing only — requires confirmation) |
+| **Badged in by** | Set your on-time cutoff (e.g. `09:00 AM`) |
+| **Refresh** | Reload the table for the selected date/cutoff |
+| **Sync Users** | Immediately pull latest users from UniFi Access |
+| **Reset Day** | Delete all badge records for the selected date (testing only) |
 
-### Status chips
-
-| Chip | Meaning |
-|---|---|
-| 🟢 ON TIME | First badge-in was at or before the cutoff |
-| 🔴 LATE | First badge-in was after the cutoff |
-
-### Columns
+### Dashboard columns
 
 | Column | Description |
 |---|---|
 | **#** | Row number |
 | **Name** | Resolved display name from UniFi Access |
-| **First Badge In** | Earliest door entry for the day — never changes |
-| **Latest Badge In** | Most recent door entry — shows *"— same"* if only one badge event |
+| **First Badge In** | Earliest door entry for the day — never changes once set |
+| **Latest Badge In** | Most recent entry — shows *"— same"* if only one badge event |
 | **Actor ID** | First 8 characters of the UniFi user UUID |
-| **Status** | ON TIME or LATE chip based on first badge vs cutoff |
-
----
-
-## Unraid GUI deployment (alternative to docker-compose)
-
-If you prefer the Unraid Docker tab UI after pushing an image to Docker Hub:
-
-```bash
-# On your workstation:
-docker build -t <dockerhub-user>/unifi-access-dashboard:latest .
-docker push <dockerhub-user>/unifi-access-dashboard:latest
-```
-
-Then in Unraid → **Docker → Add Container**:
-
-| Field | Value |
-|---|---|
-| Name | `unifi-access-dashboard` |
-| Repository | `<dockerhub-user>/unifi-access-dashboard:latest` |
-| Network Type | Bridge |
-| Port mapping | Host `8000` → Container `8000` (TCP) |
-| Path mapping | Host `/mnt/user/appdata/unifi-access-dashboard/data` → Container `/data` |
-| Variable: `UNIFI_HOST` | `192.168.1.x` |
-| Variable: `UNIFI_API_TOKEN` | your token |
-| Variable: `TZ` | e.g. `America/Chicago` |
-| Variable: `DB_PATH` | `/data/dashboard.db` |
+| **Status** | ON TIME (green) or LATE (red) based on first badge vs cutoff |
 
 ---
 
@@ -206,39 +225,45 @@ Then in Unraid → **Docker → Add Container**:
 ```bash
 cd /mnt/user/appdata/unifi-access-dashboard
 git pull
-docker compose up -d --build
+/usr/bin/docker compose up -d --build
 ```
+
+The SQLite database in `./data/` persists across rebuilds automatically.
 
 ---
 
-## API endpoints reference
+## API reference
 
-| Method | Path | Query params | Description |
+| Method | Path | Params | Description |
 |---|---|---|---|
 | `POST` | `/api/unifi-access` | — | Receives UniFi Access webhook |
 | `GET` | `/api/first-badge-status` | `date`, `cutoff` | Returns first + latest badge per user |
 | `GET` | `/api/sync-users` | — | Triggers immediate user cache sync |
-| `DELETE` | `/api/reset-day` | `date` | Deletes all records for the given date |
+| `DELETE` | `/api/reset-day` | `date` | Deletes all records for given date |
+| `GET` | `/api/debug-user-cache` | `actor_id` | Queries Access API for a specific user ID |
 
 ---
 
 ## Troubleshooting
 
-| Symptom | Likely cause | Fix |
+| Symptom | Cause | Fix |
 |---|---|---|
-| Names show as `Unknown (UUID…)` | Users not cached yet | Click **Sync Users** or wait for the 6-hr job |
-| Webhook POST not arriving | Firewall or Docker network | Ensure port `8000` is reachable from the UniFi controller IP |
-| `curl` returns SSL error | Self-signed cert on controller | Add `-k` to curl; already handled in Python |
-| 404 on `/api1/users` | API path differs for your firmware | Try `/api/v1/users`; check your Access app version |
-| Flask exits immediately | `.env` missing or malformed | Ensure `.env` exists alongside `docker-compose.yml` |
-| Duplicate events | Both Alarm Manager and API webhooks active | Remove one; both are harmless but will store duplicate rows |
-| Container rebuilds but old DB persists | Volume mount working correctly | This is expected — `./data/` survives rebuilds |
+| `Webhook signature mismatch` | Wrong or missing `WEBHOOK_SECRET` in `.env` | Copy `secret` from Step 6 response into `.env`, rebuild |
+| `401 Unauthorized` on webhook | Token invalid or wrong scope | Regenerate token in Access → Settings → General → API Token |
+| `Port 12445 connection refused` | Firewall blocking port | Add LAN IN firewall rule in UniFi Network (Step 1) |
+| Names show as `(Unknown)` | Users not cached yet | Click **Sync Users**; check logs for `Synced X users` |
+| `before_first_request` error | Running Flask 3.0+ with old code | Use the latest `app.py` which uses `with app.app_context()` |
+| `-SkipCertificateCheck` error in PowerShell | PowerShell 5.1 (not Core) | Add `[System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }` before the request |
+| Webhook POST returns 400 / no actor | Old `app.py` extracting wrong field | Use latest `app.py` which reads `data.actor.id` |
+| Dashboard shows stale names after user rename | Cache not refreshed | Click **Sync Users** or wait for 6-hour auto-sync |
+| Container starts but no users synced | `UNIFI_API_TOKEN` missing or wrong in `.env` | Check `.env` and rebuild |
 
 ---
 
 ## Security notes
 
 - `.env` is excluded from git via `.gitignore` — never commit it.
-- The API token is never exposed to the browser or frontend.
-- For access outside your LAN, place Nginx or Traefik with HTTPS in front of port `8000`.
-- The `/api/reset-day` endpoint has no authentication — keep the container on your internal network only.
+- The `WEBHOOK_SECRET` ensures only genuine UniFi Access events are accepted (HMAC-SHA256).
+- The API token is never exposed to the browser.
+- The `/api/reset-day` and `/api/debug-user-cache` endpoints have no authentication — keep the container on your internal network only.
+- For external access, place Nginx or Traefik with HTTPS in front of port `8000`.

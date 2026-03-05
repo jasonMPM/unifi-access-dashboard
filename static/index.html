@@ -1,171 +1,110 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <title>UniFi Access Attendance</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
-      --bg: #050508;
-      --bg-card: #111113;
-      --gold: #d4af37;
-      --gold-soft: #b89630;
-      --text: #f5f5f5;
-      --muted: #888;
-      --danger: #ff4d4f;
-      --success: #2ecc71;
-      --warn: #f39c12;
-      --border: #222;
+      --bg: #050508; --bg-card: #111113; --gold: #d4af37; --gold-soft: #b89630;
+      --text: #f5f5f5; --muted: #888; --danger: #ff4d4f; --success: #2ecc71;
+      --warn: #f39c12; --border: #222;
     }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      background: radial-gradient(circle at top, #18181c 0, #050508 55%);
+      background: radial-gradient(circle at top, #18181c 0%, #050508 55%);
       color: var(--text);
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      min-height: 100vh;
-      display: flex;
-      justify-content: center;
-      padding: 32px 16px;
+      min-height: 100vh; display: flex; justify-content: center; padding: 32px 16px;
     }
     .app-shell {
       width: 100%; max-width: 1280px;
       background: rgba(5,5,8,0.96);
-      border-radius: 20px;
-      border: 1px solid rgba(212,175,55,0.3);
+      border-radius: 20px; border: 1px solid rgba(212,175,55,0.3);
       box-shadow: 0 32px 80px rgba(0,0,0,0.7);
       padding: 24px 24px 32px;
     }
-    header {
-      display: flex; justify-content: space-between;
-      align-items: center; margin-bottom: 20px; gap: 16px;
-    }
+    header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 16px; }
     .title-block { display: flex; flex-direction: column; gap: 4px; }
     h1 { font-size: 1.6rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--gold); }
     .subtitle { font-size: 0.9rem; color: var(--muted); }
     .badge {
-      border-radius: 999px;
-      border: 1px solid rgba(212,175,55,0.5);
-      padding: 4px 10px; font-size: 0.75rem;
-      text-transform: uppercase; letter-spacing: 0.12em;
-      color: var(--gold-soft);
-      background: linear-gradient(90deg,rgba(212,175,55,0.1),rgba(212,175,55,0.02));
+      border-radius: 999px; border: 1px solid rgba(212,175,55,0.5);
+      padding: 4px 10px; font-size: 0.75rem; text-transform: uppercase;
+      letter-spacing: 0.12em; color: var(--gold-soft);
+      background: linear-gradient(90deg, rgba(212,175,55,0.1), rgba(212,175,55,0.02));
     }
-    .controls {
-      display: flex; flex-wrap: wrap; gap: 12px;
-      margin-bottom: 18px; align-items: center;
-    }
+    .controls { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 18px; align-items: center; }
     .control-group { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
     .spacer { flex: 1; }
     label { font-size: 0.8rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
     input {
-      background: var(--bg-card); border-radius: 999px;
-      border: 1px solid var(--border);
-      padding: 8px 14px; font-size: 0.9rem; color: var(--text);
-      outline: none; min-width: 130px;
+      background: var(--bg-card); border-radius: 999px; border: 1px solid var(--border);
+      padding: 8px 14px; font-size: 0.9rem; color: var(--text); outline: none; min-width: 130px;
     }
     input:focus { border-color: var(--gold-soft); box-shadow: 0 0 0 1px rgba(212,175,55,0.4); }
     button {
-      border-radius: 999px;
-      border: 1px solid rgba(212,175,55,0.7);
-      background: radial-gradient(circle at top,rgba(212,175,55,0.35),rgba(2,2,4,0.95));
-      color: var(--text); padding: 8px 18px;
-      font-size: 0.85rem; letter-spacing: 0.1em;
-      text-transform: uppercase; cursor: pointer;
-      transition: transform 0.08s, box-shadow 0.08s;
-      white-space: nowrap;
+      border-radius: 999px; border: 1px solid rgba(212,175,55,0.7);
+      background: radial-gradient(circle at top, rgba(212,175,55,0.35), rgba(2,2,4,0.95));
+      color: var(--text); padding: 8px 18px; font-size: 0.85rem;
+      letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer;
+      transition: transform 0.08s, box-shadow 0.08s; white-space: nowrap;
     }
     button:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
     button:active { transform: translateY(1px); box-shadow: none; }
     button:disabled { opacity: 0.45; cursor: default; transform: none; }
-    .sync-btn {
-      border-color: rgba(100,180,255,0.6);
-      background: radial-gradient(circle at top,rgba(100,180,255,0.18),rgba(2,2,4,0.95));
-    }
-    .reset-btn {
-      border-color: rgba(255,100,100,0.6);
-      background: radial-gradient(circle at top,rgba(255,80,80,0.18),rgba(2,2,4,0.95));
-    }
-    .summary-row {
-      display: flex; flex-wrap: wrap; gap: 12px;
-      margin-bottom: 16px; font-size: 0.85rem;
-    }
-    .summary-pill {
-      display: inline-flex; align-items: center; gap: 8px;
-      background: var(--bg-card); border-radius: 999px;
-      padding: 6px 14px; border: 1px solid var(--border); color: var(--muted);
-    }
+    .sync-btn { border-color: rgba(100,180,255,0.6); background: radial-gradient(circle at top, rgba(100,180,255,0.18), rgba(2,2,4,0.95)); }
+    .reset-btn { border-color: rgba(255,100,100,0.6); background: radial-gradient(circle at top, rgba(255,80,80,0.18), rgba(2,2,4,0.95)); }
+    .summary-row { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; font-size: 0.85rem; }
+    .summary-pill { display: inline-flex; align-items: center; gap: 8px; background: var(--bg-card); border-radius: 999px; padding: 6px 14px; border: 1px solid var(--border); color: var(--muted); }
     .dot { width: 9px; height: 9px; border-radius: 50%; }
     .dot.on  { background: var(--success); box-shadow: 0 0 10px rgba(46,204,113,0.7); }
     .dot.off { background: var(--danger);  box-shadow: 0 0 10px rgba(255,77,79,0.7); }
     .dot.all { background: var(--gold-soft); box-shadow: 0 0 10px rgba(184,150,48,0.5); }
     .table-card {
-      background: linear-gradient(135deg,rgba(17,17,19,0.98),rgba(8,8,10,0.98));
-      border-radius: 14px; border: 1px solid rgba(255,255,255,0.04);
-      overflow: hidden;
+      background: linear-gradient(135deg, rgba(17,17,19,0.98), rgba(8,8,10,0.98));
+      border-radius: 14px; border: 1px solid rgba(255,255,255,0.04); overflow: hidden;
     }
     table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
-    thead { background: radial-gradient(circle at top left,rgba(212,175,55,0.22),rgba(10,10,12,0.9)); }
-    th, td {
-      padding: 10px 16px; text-align: left;
-      border-bottom: 1px solid rgba(255,255,255,0.04);
-      white-space: nowrap;
-    }
+    thead { background: radial-gradient(circle at top left, rgba(212,175,55,0.22), rgba(10,10,12,0.9)); }
+    th, td { padding: 10px 16px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.04); white-space: nowrap; }
     th { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); }
     tbody tr:last-child td { border-bottom: none; }
     tbody tr:hover { background: rgba(212,175,55,0.04); }
-    .name-cell { font-weight: 500; color: var(--text); }
-    .muted-cell { color: var(--muted); font-size: 0.82rem; }
+    .name-cell   { font-weight: 500; color: var(--text); }
+    .muted-cell  { color: var(--muted); font-size: 0.82rem; }
     .align-center { text-align: center; }
-    .time-first { color: var(--text); font-weight: 500; }
+    .time-first  { color: var(--text); font-weight: 500; }
     .time-latest { color: var(--muted); font-size: 0.85rem; }
-    .same-badge { color: #555; font-size: 0.82rem; font-style: italic; }
+    .same-badge  { color: #555; font-size: 0.82rem; font-style: italic; }
     .status-chip {
       display: inline-flex; align-items: center; justify-content: center;
       min-width: 88px; padding: 5px 12px; border-radius: 999px;
-      font-size: 0.78rem; font-weight: 600;
-      text-transform: uppercase; letter-spacing: 0.1em;
+      font-size: 0.78rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em;
     }
     .status-on  { background: rgba(46,204,113,0.1); color: #c9f7dc; border: 1px solid rgba(46,204,113,0.65); box-shadow: 0 0 14px rgba(46,204,113,0.2); }
     .status-off { background: rgba(255,77,79,0.1);  color: #ffd6d7; border: 1px solid rgba(255,77,79,0.75);  box-shadow: 0 0 14px rgba(255,77,79,0.2); }
     .chip-dot { width: 7px; height: 7px; border-radius: 50%; margin-right: 6px; background: currentColor; }
     .empty-state { padding: 28px 16px; text-align: center; color: var(--muted); font-size: 0.9rem; }
     .empty-state span { color: var(--gold-soft); }
-
     /* Modal */
-    .modal-overlay {
-      display: none; position: fixed; inset: 0;
-      background: rgba(0,0,0,0.75); backdrop-filter: blur(4px);
-      z-index: 100; align-items: center; justify-content: center;
-    }
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(4px); z-index: 100; align-items: center; justify-content: center; }
     .modal-overlay.open { display: flex; }
-    .modal {
-      background: var(--bg-card);
-      border: 1px solid rgba(255,100,100,0.5);
-      border-radius: 16px; padding: 28px 32px;
-      max-width: 400px; width: 90%; text-align: center;
-      box-shadow: 0 24px 60px rgba(0,0,0,0.8);
-    }
+    .modal { background: var(--bg-card); border: 1px solid rgba(255,100,100,0.5); border-radius: 16px; padding: 28px 32px; max-width: 400px; width: 90%; text-align: center; box-shadow: 0 24px 60px rgba(0,0,0,0.8); }
     .modal h2 { color: var(--danger); font-size: 1.1rem; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.08em; }
-    .modal p  { color: var(--muted); font-size: 0.9rem; margin-bottom: 22px; line-height: 1.6; }
+    .modal p { color: var(--muted); font-size: 0.9rem; margin-bottom: 22px; line-height: 1.6; }
     .modal p strong { color: var(--text); }
     .modal-actions { display: flex; gap: 12px; justify-content: center; }
-    .modal-cancel {
-      border-color: rgba(255,255,255,0.15);
-      background: rgba(255,255,255,0.05);
-    }
+    .modal-cancel  { border-color: rgba(255,255,255,0.15); background: rgba(255,255,255,0.05); }
     .modal-confirm { border-color: rgba(255,100,100,0.6); background: rgba(255,80,80,0.18); }
-
     /* Toast */
     .toast {
-      position: fixed; bottom: 24px; right: 24px;
-      background: var(--bg-card); border: 1px solid rgba(212,175,55,0.5);
-      border-radius: 12px; padding: 12px 18px; font-size: 0.85rem;
-      color: var(--gold); opacity: 0; transform: translateY(12px);
-      transition: opacity 0.25s, transform 0.25s;
-      pointer-events: none; z-index: 200;
+      position: fixed; bottom: 24px; right: 24px; background: var(--bg-card);
+      border: 1px solid rgba(212,175,55,0.5); border-radius: 12px; padding: 12px 18px;
+      font-size: 0.85rem; color: var(--gold); opacity: 0; transform: translateY(12px);
+      transition: opacity 0.25s, transform 0.25s; pointer-events: none; z-index: 200;
     }
     .toast.show { opacity: 1; transform: translateY(0); }
-
     @media (max-width: 800px) {
       header { flex-direction: column; align-items: flex-start; }
       .controls { flex-direction: column; align-items: stretch; }
@@ -176,11 +115,10 @@
 </head>
 <body>
 <div class="app-shell">
-
   <header>
     <div class="title-block">
       <h1>Building Access</h1>
-      <div class="subtitle">Daily badge-in attendance — powered by UniFi Access</div>
+      <div class="subtitle">Daily badge-in attendance &mdash; powered by UniFi Access</div>
     </div>
     <div class="badge">LIVE ATTENDANCE DASHBOARD</div>
   </header>
@@ -188,11 +126,11 @@
   <section class="controls">
     <div class="control-group">
       <label for="date">Date</label>
-      <input type="date" id="date" />
+      <input type="date" id="date">
     </div>
     <div class="control-group">
       <label for="cutoff">Badged in by</label>
-      <input type="time" id="cutoff" value="09:00" />
+      <input type="time" id="cutoff" value="09:00">
     </div>
     <div class="spacer"></div>
     <div class="control-group">
@@ -203,9 +141,9 @@
   </section>
 
   <section class="summary-row">
-    <div class="summary-pill"><div class="dot on"></div><span id="on-time-count">0 on time</span></div>
-    <div class="summary-pill"><div class="dot off"></div><span id="late-count">0 late</span></div>
-    <div class="summary-pill"><div class="dot all"></div><span id="total-count">0 total</span></div>
+    <div class="summary-pill"><div class="dot on"></div><span id="on-time-count">0</span> on time</div>
+    <div class="summary-pill"><div class="dot off"></div><span id="late-count">0</span> late</div>
+    <div class="summary-pill"><div class="dot all"></div><span id="total-count">0</span> total</div>
   </section>
 
   <section class="table-card">
@@ -225,14 +163,13 @@
       </tbody>
     </table>
   </section>
-
 </div>
 
 <!-- Reset confirmation modal -->
 <div class="modal-overlay" id="reset-modal">
   <div class="modal">
     <h2>&#9888; Reset Day</h2>
-    <p>This will permanently delete all badge-in records for <strong id="modal-date-label"></strong>.<br/>Use this for testing only.</p>
+    <p>This will permanently delete all badge-in records for <strong id="modal-date-label"></strong>.<br>Use this for testing only.</p>
     <div class="modal-actions">
       <button class="modal-cancel" id="modal-cancel">Cancel</button>
       <button class="modal-confirm" id="modal-confirm">Yes, Reset</button>
@@ -260,12 +197,12 @@
     const cutoff = document.getElementById('cutoff').value || '09:00';
     const params = new URLSearchParams({ date, cutoff });
 
-    let data = [];
+    let data;
     try {
       const res = await fetch('/api/first-badge-status?' + params.toString());
       data = await res.json();
     } catch {
-      showToast('⚠ Could not load data');
+      showToast('Could not load data');
       return;
     }
 
@@ -275,7 +212,7 @@
     if (!data.length) {
       tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No badge-in records for this day.</td></tr>';
       ['on-time-count','late-count','total-count'].forEach(id => {
-        document.getElementById(id).textContent = id === 'total-count' ? '0 total' : id === 'on-time-count' ? '0 on time' : '0 late';
+        document.getElementById(id).textContent = '0';
       });
       return;
     }
@@ -291,68 +228,72 @@
       numTd.textContent = i + 1;
       tr.appendChild(numTd);
 
-      // Name
+      // Name — use row.name directly (server resolves Unknown fallback)
       const nameTd = document.createElement('td');
       nameTd.className = 'name-cell';
-      nameTd.textContent = row.actor_name || '(Unknown)';
+      nameTd.textContent = row.name;
       tr.appendChild(nameTd);
 
-      // First badge in (always show bold)
+      // First badge in
       const firstTd = document.createElement('td');
       firstTd.className = 'time-first';
-      firstTd.textContent = row.badge_time;
+      firstTd.textContent = row.first_ts || '—';
       tr.appendChild(firstTd);
 
-      // Latest badge in (show dashes if same as first)
+      // Latest badge in
       const latestTd = document.createElement('td');
-      if (row.latest_time === row.badge_time) {
+      if (!row.latest_ts) {
         latestTd.className = 'same-badge';
         latestTd.textContent = '— same';
       } else {
         latestTd.className = 'time-latest';
-        latestTd.textContent = row.latest_time;
+        latestTd.textContent = row.latest_ts;
       }
       tr.appendChild(latestTd);
 
       // Actor ID (truncated)
       const idTd = document.createElement('td');
       idTd.className = 'muted-cell';
-      idTd.textContent = row.actor_id ? row.actor_id.slice(0, 8) + '…' : '';
+      idTd.textContent = row.actor_id ? row.actor_id.slice(0, 8) + '...' : '—';
       tr.appendChild(idTd);
 
       // Status chip
       const statusTd = document.createElement('td');
       statusTd.className = 'align-center';
       const chip = document.createElement('div');
-      chip.className = 'status-chip ' + (row.on_time ? 'status-on' : 'status-off');
-      chip.innerHTML = '<span class="chip-dot"></span>' + (row.on_time ? 'ON TIME' : 'LATE');
+      const isOnTime = row.status === 'ON TIME';
+      chip.className = 'status-chip ' + (isOnTime ? 'status-on' : 'status-off');
+      chip.innerHTML = '<span class="chip-dot"></span>' + (isOnTime ? 'ON TIME' : 'LATE');
       statusTd.appendChild(chip);
       tr.appendChild(statusTd);
 
       tbody.appendChild(tr);
-      row.on_time ? onTime++ : late++;
+
+      isOnTime ? onTime++ : late++;
     });
 
-    document.getElementById('on-time-count').textContent = onTime + ' on time';
-    document.getElementById('late-count').textContent    = late   + ' late';
-    document.getElementById('total-count').textContent   = (onTime + late) + ' total';
+    document.getElementById('on-time-count').textContent = onTime;
+    document.getElementById('late-count').textContent    = late;
+    document.getElementById('total-count').textContent   = onTime + late;
   }
 
   async function syncUsers() {
     const btn = document.getElementById('sync-btn');
-    btn.textContent = '⏳ Syncing…'; btn.disabled = true;
+    btn.textContent = 'Syncing…';
+    btn.disabled = true;
     try {
       await fetch('/api/sync-users');
-      showToast('✔ User list synced from UniFi Access');
+      showToast('User list synced from UniFi Access');
       await loadData();
     } catch {
-      showToast('⚠ Sync failed — check server logs');
+      showToast('Sync failed — check server logs');
     } finally {
-      btn.textContent = '↻ Sync Users'; btn.disabled = false;
+      btn.textContent = '⟳ Sync Users';
+      btn.disabled = false;
     }
   }
 
-  // ── Reset day modal ─────────────────────────────────────────────────────────
+  // Reset day modal
   document.getElementById('reset-btn').addEventListener('click', () => {
     const date = document.getElementById('date').value || isoToday();
     document.getElementById('modal-date-label').textContent = date;
@@ -369,14 +310,13 @@
     try {
       const res  = await fetch('/api/reset-day?date=' + date, { method: 'DELETE' });
       const json = await res.json();
-      showToast(`✔ Reset complete — ${json.deleted} record(s) deleted for ${date}`);
+      showToast(`Reset complete — ${json.deleted} record(s) deleted for ${date}`);
       await loadData();
     } catch {
-      showToast('⚠ Reset failed — check server logs');
+      showToast('Reset failed — check server logs');
     }
   });
 
-  // Close modal on overlay click
   document.getElementById('reset-modal').addEventListener('click', e => {
     if (e.target === document.getElementById('reset-modal'))
       document.getElementById('reset-modal').classList.remove('open');
