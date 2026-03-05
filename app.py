@@ -73,11 +73,30 @@ def sync_unifi_users():
         log.error("sync_unifi_users error: %s", e)
 
 def verify_signature(payload_bytes, sig_header):
-    """Return True if HMAC-SHA256 signature matches, or if no secret configured."""
+    """
+    UniFi Access signature format (from official API docs section 11.7):
+      Header name : Signature
+      Header value: t=<unix_timestamp>,v1=<hex_hmac_sha256>
+      Signed data : f"{timestamp}.{raw_body}"
+    Returns True if valid, or if no WEBHOOK_SECRET is configured.
+    """
     if not WEBHOOK_SECRET:
         return True
-    expected = hmac.new(WEBHOOK_SECRET.encode(), payload_bytes, hashlib.sha256).hexdigest()
-    return hmac.compare_digest(expected, sig_header or "")
+    if not sig_header:
+        log.warning("No Signature header present")
+        return False
+    try:
+        parts = dict(p.split("=", 1) for p in sig_header.split(","))
+        timestamp  = parts.get("t", "")
+        received   = parts.get("v1", "")
+        signed_payload = f"{timestamp}.".encode() + payload_bytes
+        expected = hmac.new(
+            WEBHOOK_SECRET.encode(), signed_payload, hashlib.sha256
+        ).hexdigest()
+        return hmac.compare_digest(expected, received)
+    except Exception as e:
+        log.warning("Signature parse error: %s", e)
+        return False
 
 @app.route("/")
 def index():
@@ -88,7 +107,7 @@ def receive_webhook():
     raw = request.get_data()
 
     # Optional signature verification
-    sig = request.headers.get("X-Signature-SHA256", "")
+    sig = request.headers.get("Signature", "")
     if not verify_signature(raw, sig):
         log.warning("Webhook signature mismatch")
         return jsonify({"error": "invalid signature"}), 401
