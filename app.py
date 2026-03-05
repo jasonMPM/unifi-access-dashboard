@@ -66,12 +66,8 @@ def sync_unifi_users():
         users = r.json().get("data", [])
         with get_db() as db:
             for u in users:
-                # Prefer the same ID used in webhooks (identity ID / id)
-                actor_id = (
-                    u.get("id")
-                    or u.get("identity_id")
-                    or u.get("user_id")
-                )
+                # Use the same ID field we see in webhooks
+                actor_id = u.get("id")
                 if not actor_id:
                     continue  # skip malformed entries
 
@@ -101,16 +97,13 @@ def sync_unifi_users():
 
 def verify_signature(payload_bytes, sig_header):
     """
-    UniFi Access signature format (API docs section 11.7):
+    UniFi Access signature format:
 
       Header name : Signature
       Header value: t=<unix_timestamp>,v1=<hex_hmac_sha256>
       Signed data : f"{timestamp}.{raw_body}"
-
-    Returns True if valid, or if no WEBHOOK_SECRET is configured.
     """
     if not WEBHOOK_SECRET:
-        # If no secret configured, accept all (useful for initial testing)
         return True
     if not sig_header:
         log.warning("No Signature header present")
@@ -158,14 +151,11 @@ def receive_webhook():
     # Data block per UniFi Access docs: payload["data"]["actor"], ["event"], etc.
     data = payload.get("data") or {}
     actor_obj = data.get("actor") or {}
-    actor = (
-        actor_obj.get("id")
-        or actor_obj.get("identity_id")
-        or payload.get("actor_id", "")
-    )
+
+    # Use the same field as in your debug output
+    actor = actor_obj.get("id")
 
     if "access.door.unlock" not in str(event):
-        # Ignore other notification types
         return jsonify({"status": "ignored"}), 200
 
     if not actor:
@@ -230,7 +220,6 @@ def first_badge_status():
     for r in rows:
         first = r["first_ts"]
         latest = r["latest_ts"]
-        # Compare as strings HH:MM:SS against cutoff HH:MM (treat <= cutoff:59 as on time)
         status = "ON TIME" if first <= cutoff + ":59" else "LATE"
         result.append(
             {
@@ -262,7 +251,6 @@ def reset_day():
 
 @app.route("/api/debug-user-cache")
 def debug_user_cache():
-    """Temporary helper to see what the Access API returns for a webhook actor."""
     actor_id = request.args.get("actor_id", "").strip()
     if not actor_id:
         return jsonify({"error": "missing actor_id"}), 400
@@ -290,7 +278,6 @@ def debug_user_cache():
         return jsonify({"error": str(e)}), 500
 
 
-# Initialise DB and kick off background scheduler at import time
 with app.app_context():
     init_db()
     sync_unifi_users()
