@@ -30,21 +30,25 @@ def get_db():
 
 def init_db():
     with get_db() as db:
-        db.execute("""
+        db.execute(
+            """
             CREATE TABLE IF NOT EXISTS badge_events (
                 id        INTEGER PRIMARY KEY AUTOINCREMENT,
                 actor_id  TEXT NOT NULL,
                 ts        TEXT NOT NULL,
                 date      TEXT NOT NULL
             )
-        """)
-        db.execute("""
+            """
+        )
+        db.execute(
+            """
             CREATE TABLE IF NOT EXISTS user_cache (
                 actor_id   TEXT PRIMARY KEY,
                 full_name  TEXT NOT NULL,
                 updated_at TEXT NOT NULL
             )
-        """)
+            """
+        )
         db.commit()
 
 
@@ -62,35 +66,33 @@ def sync_unifi_users():
         users = r.json().get("data", [])
         with get_db() as db:
             for u in users:
-    # Prefer the same ID used in webhooks (identity ID)
-    actor_id = (
-        u.get("id") or
-        u.get("identity_id") or
-        u.get("user_id")
-    )
+                # Prefer the same ID used in webhooks (identity ID / id)
+                actor_id = (
+                    u.get("id")
+                    or u.get("identity_id")
+                    or u.get("user_id")
+                )
+                if not actor_id:
+                    continue  # skip malformed entries
 
-    if not actor_id:
-        continue  # skip malformed entries
+                full_name = (u.get("full_name") or "").strip()
+                if not full_name:
+                    full_name = f"{u.get('first_name','')} {u.get('last_name','')}".strip()
 
-    full_name = (u.get("full_name") or "").strip()
-    if not full_name:
-        full_name = f"{u.get('first_name','')} {u.get('last_name','')}".strip()
-
-    db.execute(
-        """
-        INSERT INTO user_cache (actor_id, full_name, updated_at)
-        VALUES (?, ?, ?)
-        ON CONFLICT(actor_id) DO UPDATE SET
-            full_name  = excluded.full_name,
-            updated_at = excluded.updated_at
-        """,
-        (
-            actor_id,
-            full_name or f"User {actor_id[:8]}",
-            datetime.utcnow().isoformat(),
-        ),
-    )
-
+                db.execute(
+                    """
+                    INSERT INTO user_cache (actor_id, full_name, updated_at)
+                    VALUES (?, ?, ?)
+                    ON CONFLICT(actor_id) DO UPDATE SET
+                        full_name  = excluded.full_name,
+                        updated_at = excluded.updated_at
+                    """,
+                    (
+                        actor_id,
+                        full_name or f"User {actor_id[:8]}",
+                        datetime.utcnow().isoformat(),
+                    ),
+                )
             db.commit()
         log.info("Synced %d users from UniFi Access", len(users))
     except Exception as e:
