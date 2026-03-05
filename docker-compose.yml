@@ -1,6 +1,6 @@
-version: "3.9"
+version: "3.8"
 services:
-  unifi-access-dashboard:
+  dashboard:
     build: .
     container_name: unifi-access-dashboard
     restart: unless-stopped
@@ -11,4 +11,9 @@ services:
     env_file:
       - .env
     environment:
-      - TZ=America/Chicago
+      - UNIFI_HOST=${UNIFI_HOST}
+      - UNIFI_PORT=${UNIFI_PORT:-12445}
+      - UNIFI_API_TOKEN=${UNIFI_API_TOKEN}
+      - WEBHOOK_SECRET=${WEBHOOK_SECRET}
+      - TZ=${TZ:-America/Chicago}
+      - DB_PATH=${DB_PATH:-/data/dashboard.db}
