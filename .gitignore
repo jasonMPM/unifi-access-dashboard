@@ -1,0 +1,13 @@
+# Secret environment file — never commit this
+.env
+
+# Persistent database and Python cache
+data/
+__pycache__/
+*.pyc
+*.db
+*.db-journal
+.DS_Store
+
+# Explicitly allow the example template
+!.env.example
