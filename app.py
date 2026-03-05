@@ -62,23 +62,35 @@ def sync_unifi_users():
         users = r.json().get("data", [])
         with get_db() as db:
             for u in users:
-                full_name = (u.get("full_name") or "").strip()
-                if not full_name:
-                    full_name = f"{u.get('first_name','')} {u.get('last_name','')}".strip()
-                db.execute(
-                    """
-                    INSERT INTO user_cache (actor_id, full_name, updated_at)
-                    VALUES (?, ?, ?)
-                    ON CONFLICT(actor_id) DO UPDATE SET
-                        full_name  = excluded.full_name,
-                        updated_at = excluded.updated_at
-                    """,
-                    (
-                        u["id"],
-                        full_name or f"User {u['id'][:8]}",
-                        datetime.utcnow().isoformat(),
-                    ),
-                )
+    # Prefer the same ID used in webhooks (identity ID)
+    actor_id = (
+        u.get("id") or
+        u.get("identity_id") or
+        u.get("user_id")
+    )
+
+    if not actor_id:
+        continue  # skip malformed entries
+
+    full_name = (u.get("full_name") or "").strip()
+    if not full_name:
+        full_name = f"{u.get('first_name','')} {u.get('last_name','')}".strip()
+
+    db.execute(
+        """
+        INSERT INTO user_cache (actor_id, full_name, updated_at)
+        VALUES (?, ?, ?)
+        ON CONFLICT(actor_id) DO UPDATE SET
+            full_name  = excluded.full_name,
+            updated_at = excluded.updated_at
+        """,
+        (
+            actor_id,
+            full_name or f"User {actor_id[:8]}",
+            datetime.utcnow().isoformat(),
+        ),
+    )
+
             db.commit()
         log.info("Synced %d users from UniFi Access", len(users))
     except Exception as e:
