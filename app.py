@@ -158,7 +158,11 @@ def receive_webhook():
     # Data block per UniFi Access docs: payload["data"]["actor"], ["event"], etc.
     data = payload.get("data") or {}
     actor_obj = data.get("actor") or {}
-    actor = actor_obj.get("id") or payload.get("actor_id", "")
+    actor = (
+        actor_obj.get("id")
+        or actor_obj.get("identity_id")
+        or payload.get("actor_id", "")
+    )
 
     if "access.door.unlock" not in str(event):
         # Ignore other notification types
@@ -254,6 +258,36 @@ def reset_day():
         cur = db.execute("DELETE FROM badge_events WHERE date = ?", (date,))
         db.commit()
     return jsonify({"status": "ok", "deleted": cur.rowcount, "date": date})
+
+
+@app.route("/api/debug-user-cache")
+def debug_user_cache():
+    """Temporary helper to see what the Access API returns for a webhook actor."""
+    actor_id = request.args.get("actor_id", "").strip()
+    if not actor_id:
+        return jsonify({"error": "missing actor_id"}), 400
+
+    try:
+        r = requests.get(
+            f"{UNIFI_BASE}/users/search",
+            headers={"Authorization": f"Bearer {UNIFI_TOKEN}"},
+            params={"userid": actor_id},
+            verify=False,
+            timeout=10,
+        )
+        try:
+            data = r.json()
+        except Exception:
+            data = {"raw": r.text[:500]}
+        return jsonify(
+            {
+                "status_code": r.status_code,
+                "actor_id_param": actor_id,
+                "response": data,
+            }
+        )
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 # Initialise DB and kick off background scheduler at import time
