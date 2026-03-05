@@ -1,1 +1,319 @@
-<!DOCTYPE html><html><body>Replace this with full index.html from the assistant response.</body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>UniFi Access Attendance</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    :root {
+      --bg: #050508;
+      --bg-card: #111113;
+      --gold: #d4af37;
+      --gold-soft: #b89630;
+      --text: #f5f5f5;
+      --muted: #888;
+      --danger: #ff4d4f;
+      --success: #2ecc71;
+      --border: #222;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: radial-gradient(circle at top, #18181c 0, #050508 55%);
+      color: var(--text);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      padding: 32px 16px;
+    }
+    .app-shell {
+      width: 100%; max-width: 1200px;
+      background: rgba(5,5,8,0.96);
+      border-radius: 20px;
+      border: 1px solid rgba(212,175,55,0.3);
+      box-shadow: 0 32px 80px rgba(0,0,0,0.7);
+      padding: 24px 24px 32px;
+    }
+    header {
+      display: flex; justify-content: space-between;
+      align-items: center; margin-bottom: 20px; gap: 16px;
+    }
+    .title-block { display: flex; flex-direction: column; gap: 4px; }
+    h1 {
+      font-size: 1.6rem; letter-spacing: 0.08em;
+      text-transform: uppercase; color: var(--gold);
+    }
+    .subtitle { font-size: 0.9rem; color: var(--muted); }
+    .badge {
+      border-radius: 999px;
+      border: 1px solid rgba(212,175,55,0.5);
+      padding: 4px 10px; font-size: 0.75rem;
+      text-transform: uppercase; letter-spacing: 0.12em;
+      color: var(--gold-soft);
+      background: linear-gradient(90deg,rgba(212,175,55,0.1),rgba(212,175,55,0.02));
+    }
+    .controls {
+      display: flex; flex-wrap: wrap; gap: 12px;
+      margin-bottom: 18px; align-items: center;
+      justify-content: space-between;
+    }
+    .control-group { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+    label { font-size: 0.8rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+    input, select {
+      background: var(--bg-card); border-radius: 999px;
+      border: 1px solid var(--border);
+      padding: 8px 14px; font-size: 0.9rem; color: var(--text);
+      outline: none; min-width: 130px;
+    }
+    input:focus, select:focus {
+      border-color: var(--gold-soft);
+      box-shadow: 0 0 0 1px rgba(212,175,55,0.4);
+    }
+    button {
+      border-radius: 999px;
+      border: 1px solid rgba(212,175,55,0.7);
+      background: radial-gradient(circle at top,rgba(212,175,55,0.35),rgba(2,2,4,0.95));
+      color: var(--text); padding: 8px 18px;
+      font-size: 0.85rem; letter-spacing: 0.1em;
+      text-transform: uppercase; cursor: pointer;
+      transition: transform 0.08s, box-shadow 0.08s;
+    }
+    button:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
+    button:active { transform: translateY(1px); }
+    .sync-btn {
+      border-color: rgba(100,180,255,0.6);
+      background: radial-gradient(circle at top,rgba(100,180,255,0.18),rgba(2,2,4,0.95));
+    }
+    .summary-row {
+      display: flex; flex-wrap: wrap; gap: 12px;
+      margin-bottom: 16px; font-size: 0.85rem;
+    }
+    .summary-pill {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--bg-card); border-radius: 999px;
+      padding: 6px 14px; border: 1px solid var(--border);
+      color: var(--muted);
+    }
+    .dot { width: 9px; height: 9px; border-radius: 50%; }
+    .dot.on  { background: var(--success); box-shadow: 0 0 10px rgba(46,204,113,0.7); }
+    .dot.off { background: var(--danger);  box-shadow: 0 0 10px rgba(255,77,79,0.7); }
+    .dot.all { background: var(--gold-soft); box-shadow: 0 0 10px rgba(184,150,48,0.5); }
+    .table-card {
+      background: linear-gradient(135deg,rgba(17,17,19,0.98),rgba(8,8,10,0.98));
+      border-radius: 14px; border: 1px solid rgba(255,255,255,0.04);
+      overflow: hidden;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    thead {
+      background: radial-gradient(circle at top left,rgba(212,175,55,0.22),rgba(10,10,12,0.9));
+    }
+    th, td {
+      padding: 10px 16px; text-align: left;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      white-space: nowrap;
+    }
+    th {
+      font-size: 0.78rem; text-transform: uppercase;
+      letter-spacing: 0.12em; color: var(--muted);
+    }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover { background: rgba(212,175,55,0.04); }
+    .name-cell { font-weight: 500; color: var(--text); }
+    .muted-cell { color: var(--muted); font-size: 0.82rem; }
+    .align-center { text-align: center; }
+    .status-chip {
+      display: inline-flex; align-items: center;
+      justify-content: center; min-width: 88px;
+      padding: 5px 12px; border-radius: 999px;
+      font-size: 0.78rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.1em;
+    }
+    .status-on {
+      background: rgba(46,204,113,0.1); color: #c9f7dc;
+      border: 1px solid rgba(46,204,113,0.65);
+      box-shadow: 0 0 14px rgba(46,204,113,0.2);
+    }
+    .status-off {
+      background: rgba(255,77,79,0.1); color: #ffd6d7;
+      border: 1px solid rgba(255,77,79,0.75);
+      box-shadow: 0 0 14px rgba(255,77,79,0.2);
+    }
+    .chip-dot { width: 7px; height: 7px; border-radius: 50%; margin-right: 6px; background: currentColor; }
+    .empty-state {
+      padding: 28px 16px; text-align: center;
+      color: var(--muted); font-size: 0.9rem;
+    }
+    .empty-state span { color: var(--gold-soft); }
+    .toast {
+      position: fixed; bottom: 24px; right: 24px;
+      background: var(--bg-card); border: 1px solid rgba(212,175,55,0.5);
+      border-radius: 12px; padding: 12px 18px; font-size: 0.85rem;
+      color: var(--gold); opacity: 0; transform: translateY(12px);
+      transition: opacity 0.25s, transform 0.25s;
+      pointer-events: none; z-index: 99;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    @media (max-width: 720px) {
+      header { flex-direction: column; align-items: flex-start; }
+      .controls { flex-direction: column; align-items: stretch; }
+      input, select, button { width: 100%; }
+      th:nth-child(3), td:nth-child(3),
+      th:nth-child(4), td:nth-child(4) { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <header>
+      <div class="title-block">
+        <h1>Building Access</h1>
+        <div class="subtitle">Daily badge-in attendance — powered by UniFi Access</div>
+      </div>
+      <div class="badge">LIVE ATTENDANCE DASHBOARD</div>
+    </header>
+
+    <section class="controls">
+      <div class="control-group">
+        <label for="date">Date</label>
+        <input type="date" id="date" />
+      </div>
+      <div class="control-group">
+        <label for="cutoff">Badged in by</label>
+        <input type="time" id="cutoff" value="09:00" />
+      </div>
+      <div class="control-group">
+        <button id="refresh-btn">&#8635; Refresh</button>
+        <button class="sync-btn" id="sync-btn" title="Sync user list from UniFi Access API">&#8635; Sync Users</button>
+      </div>
+    </section>
+
+    <section class="summary-row">
+      <div class="summary-pill"><div class="dot on"></div><span id="on-time-count">0 on time</span></div>
+      <div class="summary-pill"><div class="dot off"></div><span id="late-count">0 late</span></div>
+      <div class="summary-pill"><div class="dot all"></div><span id="total-count">0 total</span></div>
+    </section>
+
+    <section class="table-card">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Name</th>
+            <th>Badge Time</th>
+            <th>Actor ID</th>
+            <th class="align-center">Status</th>
+          </tr>
+        </thead>
+        <tbody id="table-body">
+          <tr><td colspan="5" class="empty-state">No data yet. <span>Badge into a door</span> and press Refresh.</td></tr>
+        </tbody>
+      </table>
+    </section>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    function isoToday() {
+      return new Date().toISOString().slice(0, 10);
+    }
+
+    function showToast(msg, duration = 2800) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), duration);
+    }
+
+    async function loadData() {
+      const date   = document.getElementById('date').value   || isoToday();
+      const cutoff = document.getElementById('cutoff').value || '09:00';
+      const params = new URLSearchParams({ date, cutoff });
+
+      let data = [];
+      try {
+        const res = await fetch('/api/first-badge-status?' + params.toString());
+        data = await res.json();
+      } catch (err) {
+        showToast('⚠ Could not load data');
+        return;
+      }
+
+      const tbody = document.getElementById('table-body');
+      tbody.innerHTML = '';
+
+      if (!data.length) {
+        tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No badge-in records for this day.</td></tr>';
+        document.getElementById('on-time-count').textContent = '0 on time';
+        document.getElementById('late-count').textContent    = '0 late';
+        document.getElementById('total-count').textContent   = '0 total';
+        return;
+      }
+
+      let onTime = 0, late = 0;
+      data.forEach((row, i) => {
+        const tr = document.createElement('tr');
+
+        const numTd = document.createElement('td');
+        numTd.className = 'muted-cell';
+        numTd.textContent = i + 1;
+        tr.appendChild(numTd);
+
+        const nameTd = document.createElement('td');
+        nameTd.className = 'name-cell';
+        nameTd.textContent = row.actor_name || '(Unknown)';
+        tr.appendChild(nameTd);
+
+        const timeTd = document.createElement('td');
+        timeTd.textContent = row.badge_time || '';
+        tr.appendChild(timeTd);
+
+        const idTd = document.createElement('td');
+        idTd.className = 'muted-cell';
+        idTd.textContent = row.actor_id ? row.actor_id.slice(0, 8) + '…' : '';
+        tr.appendChild(idTd);
+
+        const statusTd = document.createElement('td');
+        statusTd.className = 'align-center';
+        const chip = document.createElement('div');
+        chip.className = 'status-chip ' + (row.on_time ? 'status-on' : 'status-off');
+        chip.innerHTML = '<span class="chip-dot"></span>' + (row.on_time ? 'ON TIME' : 'LATE');
+        statusTd.appendChild(chip);
+        tr.appendChild(statusTd);
+
+        tbody.appendChild(tr);
+        row.on_time ? onTime++ : late++;
+      });
+
+      document.getElementById('on-time-count').textContent = onTime + ' on time';
+      document.getElementById('late-count').textContent    = late   + ' late';
+      document.getElementById('total-count').textContent   = (onTime + late) + ' total';
+    }
+
+    async function syncUsers() {
+      const btn = document.getElementById('sync-btn');
+      btn.textContent = '⏳ Syncing…';
+      btn.disabled = true;
+      try {
+        await fetch('/api/sync-users');
+        showToast('✔ User list synced from UniFi Access');
+        await loadData();
+      } catch {
+        showToast('⚠ Sync failed — check server logs');
+      } finally {
+        btn.textContent = '↻ Sync Users';
+        btn.disabled = false;
+      }
+    }
+
+    document.getElementById('refresh-btn').addEventListener('click', loadData);
+    document.getElementById('sync-btn').addEventListener('click', syncUsers);
+
+    window.addEventListener('load', () => {
+      const dateInput = document.getElementById('date');
+      if (!dateInput.value) dateInput.value = isoToday();
+      loadData();
+    });
+  </script>
+</body>
+</html>

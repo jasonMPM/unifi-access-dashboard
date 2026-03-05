@@ -7,7 +7,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-ENV FLASK_APP=app.py     FLASK_RUN_HOST=0.0.0.0     FLASK_RUN_PORT=8000     DB_PATH=/data/events.db
+ENV FLASK_APP=app.py \
+    FLASK_RUN_HOST=0.0.0.0 \
+    FLASK_RUN_PORT=8000 \
+    DB_PATH=/data/dashboard.db
 
 EXPOSE 8000
 
