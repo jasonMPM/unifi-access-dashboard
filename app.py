@@ -96,12 +96,11 @@ def sync_unifi_users():
 
 
 def verify_signature(payload_bytes, sig_header):
-    """
-    UniFi Access signature format:
+    """Validate UniFi Access webhook signature.
 
-      Header name : Signature
-      Header value: t=<unix_timestamp>,v1=<hex_hmac_sha256>
-      Signed data : f"{timestamp}.{raw_body}"
+    Header name : Signature
+    Header value: t=<unix_timestamp>,v1=<hex_hmac_sha256>
+    Signed data : f"{timestamp}.{raw_body}"
     """
     if not WEBHOOK_SECRET:
         return True
@@ -148,11 +147,8 @@ def receive_webhook():
 
     event = payload.get("event") or payload.get("event_object_id", "") or ""
 
-    # Data block per UniFi Access docs: payload["data"]["actor"], ["event"], etc.
     data = payload.get("data") or {}
     actor_obj = data.get("actor") or {}
-
-    # Use the same field as in your debug output
     actor = actor_obj.get("id")
 
     if "access.door.unlock" not in str(event):
@@ -162,7 +158,6 @@ def receive_webhook():
         log.warning("Webhook has no actor id: %s", json.dumps(payload)[:300])
         return jsonify({"error": "no actor"}), 400
 
-    # Prefer data.event.published (ms since epoch) if present
     event_meta = data.get("event") or {}
     ts_ms = event_meta.get("published")
     if ts_ms:
