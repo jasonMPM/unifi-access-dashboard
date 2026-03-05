@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>UniFi Access Badge-In Dashboard</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --surface2: #1c2330;
+      --border: #2a3245;
+      --accent: #0081ff;
+      --accent2: #00c3ff;
+      --green: #22c55e;
+      --red: #ef4444;
+      --text: #e6edf3;
+      --muted: #7d8590;
+      --radius: 12px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    /* NAV */
+    nav {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 48px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      position: sticky; top: 0; z-index: 100;
+    }
+    .nav-logo { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 1.1rem; }
+    .logo-icon {
+      width: 34px; height: 34px; background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px;
+    }
+    .nav-links { display: flex; gap: 24px; }
+    .nav-links a { color: var(--muted); text-decoration: none; font-size: 0.9rem; transition: color .2s; }
+    .nav-links a:hover { color: var(--text); }
+    .nav-cta {
+      background: var(--accent); color: #fff; border: none; padding: 8px 20px;
+      border-radius: 8px; font-size: 0.9rem; font-weight: 600; cursor: pointer; text-decoration: none;
+      transition: opacity .2s;
+    }
+    .nav-cta:hover { opacity: 0.85; }
+
+    /* HERO */
+    .hero {
+      text-align: center;
+      padding: 90px 24px 70px;
+      background: radial-gradient(ellipse 80% 50% at 50% -10%, rgba(0,129,255,.18), transparent);
+    }
+    .badge {
+      display: inline-block; background: rgba(0,129,255,.15); border: 1px solid rgba(0,129,255,.4);
+      color: var(--accent2); font-size: 0.75rem; font-weight: 600; letter-spacing: .08em;
+      text-transform: uppercase; padding: 4px 14px; border-radius: 20px; margin-bottom: 20px;
+    }
+    .hero h1 {
+      font-size: clamp(2rem, 5vw, 3.4rem); font-weight: 800; line-height: 1.15;
+      background: linear-gradient(135deg, #e6edf3 30%, var(--accent2));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+      margin-bottom: 20px;
+    }
+    .hero p {
+      font-size: 1.1rem; color: var(--muted); max-width: 560px; margin: 0 auto 36px;
+    }
+    .hero-ctas { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff; padding: 13px 30px; border-radius: var(--radius); font-weight: 700;
+      font-size: 1rem; text-decoration: none; transition: transform .2s, box-shadow .2s;
+      box-shadow: 0 0 20px rgba(0,129,255,.35);
+    }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 4px 30px rgba(0,195,255,.4); }
+    .btn-secondary {
+      background: var(--surface2); color: var(--text); padding: 13px 30px;
+      border-radius: var(--radius); font-weight: 600; font-size: 1rem;
+      text-decoration: none; border: 1px solid var(--border); transition: border-color .2s;
+    }
+    .btn-secondary:hover { border-color: var(--accent); }
+
+    /* STATS STRIP */
+    .stats-strip {
+      display: flex; justify-content: center; gap: 40px; flex-wrap: wrap;
+      padding: 28px 24px; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .stat { text-align: center; }
+    .stat-num { font-size: 1.8rem; font-weight: 800; color: var(--accent2); }
+    .stat-label { font-size: 0.8rem; color: var(--muted); margin-top: 2px; }
+
+    /* SECTION */
+    section { padding: 80px 24px; max-width: 1100px; margin: 0 auto; }
+    .section-label {
+      font-size: 0.75rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+      color: var(--accent); margin-bottom: 10px;
+    }
+    .section-title { font-size: clamp(1.5rem, 3vw, 2.2rem); font-weight: 800; margin-bottom: 12px; }
+    .section-sub { color: var(--muted); max-width: 540px; font-size: 1rem; margin-bottom: 48px; }
+
+    /* DASHBOARD MOCKUP */
+    .dashboard-wrap {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0,0,0,.5);
+    }
+    .dash-toolbar {
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+      padding: 14px 20px; background: var(--surface2); border-bottom: 1px solid var(--border);
+    }
+    .dash-toolbar label { font-size: 0.78rem; color: var(--muted); }
+    .dash-input {
+      background: var(--bg); border: 1px solid var(--border); color: var(--text);
+      padding: 6px 12px; border-radius: 7px; font-size: 0.82rem;
+    }
+    .dash-btn {
+      padding: 6px 14px; border-radius: 7px; font-size: 0.82rem; font-weight: 600; border: none; cursor: pointer;
+    }
+    .dash-btn.blue { background: var(--accent); color: #fff; }
+    .dash-btn.ghost { background: var(--border); color: var(--text); }
+    .dash-btn.danger { background: #3d1515; color: #f87171; border: 1px solid #6b1d1d; }
+    .dash-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+    .dash-table th {
+      text-align: left; padding: 11px 18px; background: var(--surface2);
+      color: var(--muted); font-size: 0.75rem; font-weight: 600; letter-spacing: .06em;
+      text-transform: uppercase; border-bottom: 1px solid var(--border);
+    }
+    .dash-table td { padding: 11px 18px; border-bottom: 1px solid var(--border); }
+    .dash-table tr:last-child td { border-bottom: none; }
+    .dash-table tr:hover td { background: rgba(255,255,255,.025); }
+    .status-pill {
+      display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 700;
+    }
+    .on-time { background: rgba(34,197,94,.15); color: var(--green); border: 1px solid rgba(34,197,94,.3); }
+    .late    { background: rgba(239,68,68,.15);  color: var(--red);   border: 1px solid rgba(239,68,68,.3); }
+
+    /* FEATURES GRID */
+    .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; }
+    .feature-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 28px; transition: border-color .25s, transform .25s;
+    }
+    .feature-card:hover { border-color: var(--accent); transform: translateY(-3px); }
+    .feat-icon {
+      width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center;
+      justify-content: center; font-size: 22px; margin-bottom: 16px;
+      background: rgba(0,129,255,.12); border: 1px solid rgba(0,129,255,.25);
+    }
+    .feature-card h3 { font-size: 1rem; font-weight: 700; margin-bottom: 8px; }
+    .feature-card p { font-size: 0.875rem; color: var(--muted); }
+
+    /* INSTALL */
+    .install-steps { display: flex; flex-direction: column; gap: 16px; }
+    .step {
+      display: flex; gap: 18px; align-items: flex-start;
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 24px;
+    }
+    .step-num {
+      min-width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--accent2));
+      display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.9rem;
+    }
+    .step-body h4 { font-size: 0.95rem; font-weight: 700; margin-bottom: 4px; }
+    .step-body p  { font-size: 0.85rem; color: var(--muted); }
+    .step-body code {
+      font-family: 'SF Mono', Consolas, monospace;
+      background: var(--bg); border: 1px solid var(--border);
+      padding: 2px 7px; border-radius: 5px; font-size: 0.8rem; color: var(--accent2);
+    }
+
+    /* FOOTER */
+    footer {
+      text-align: center; padding: 36px 24px;
+      border-top: 1px solid var(--border); color: var(--muted); font-size: 0.85rem;
+    }
+    footer a { color: var(--accent); text-decoration: none; }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">
+    <div class="logo-icon">🚪</div>
+    UniFi Access Dashboard
+  </div>
+  <div class="nav-links">
+    <a href="#demo">Demo</a>
+    <a href="#features">Features</a>
+    <a href="#install">Install</a>
+  </div>
+  <a class="nav-cta" href="https://github.com/jasonMPM/unifi-access-dashboard" target="_blank">View on GitHub →</a>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="badge">Open Source · Self-Hosted · Docker</div>
+  <h1>Real-Time Attendance<br>Powered by UniFi Access</h1>
+  <p>Know exactly who badged in, when they arrived, and whether they were on time — all from a clean live dashboard backed by your own infrastructure.</p>
+  <div class="hero-ctas">
+    <a class="btn-primary" href="#demo">See the Dashboard</a>
+    <a class="btn-secondary" href="#install">Quick Install</a>
+  </div>
+</div>
+
+<!-- STATS -->
+<div class="stats-strip">
+  <div class="stat"><div class="stat-num">~5 min</div><div class="stat-label">Setup Time</div></div>
+  <div class="stat"><div class="stat-num">0 ms</div><div class="stat-label">Cloud Dependency</div></div>
+  <div class="stat"><div class="stat-num">6 hr</div><div class="stat-label">Auto User Sync</div></div>
+  <div class="stat"><div class="stat-num">100%</div><div class="stat-label">Self-Hosted &amp; Private</div></div>
+</div>
+
+<!-- DASHBOARD DEMO -->
+<section id="demo">
+  <div class="section-label">Live Preview</div>
+  <div class="section-title">Your dashboard, today</div>
+  <div class="section-sub">Real names resolved from your UniFi Access controller, attendance status applied automatically against your custom cutoff time.</div>
+
+  <div class="dashboard-wrap">
+    <div class="dash-toolbar">
+      <label>Date</label>
+      <input class="dash-input" type="text" value="2026-03-04" readonly />
+      <label>Badged in by</label>
+      <input class="dash-input" type="text" value="09:00 AM" readonly />
+      <button class="dash-btn blue">↻ Refresh</button>
+      <button class="dash-btn ghost">⟳ Sync Users</button>
+      <button class="dash-btn danger">✕ Reset Day</button>
+    </div>
+    <table class="dash-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Name</th>
+          <th>First Badge In</th>
+          <th>Latest Badge In</th>
+          <th>Actor ID</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>1</td><td>Alex Rivera</td><td>08:47 AM</td><td>— same</td><td>a3f9c21b</td><td><span class="status-pill on-time">ON TIME</span></td></tr>
+        <tr><td>2</td><td>Jordan Lee</td><td>08:53 AM</td><td>02:14 PM</td><td>b72e4d09</td><td><span class="status-pill on-time">ON TIME</span></td></tr>
+        <tr><td>3</td><td>Morgan Chen</td><td>09:12 AM</td><td>— same</td><td>c8a1f355</td><td><span class="status-pill late">LATE</span></td></tr>
+        <tr><td>4</td><td>Taylor Brooks</td><td>08:58 AM</td><td>01:07 PM</td><td>d04b9e77</td><td><span class="status-pill on-time">ON TIME</span></td></tr>
+        <tr><td>5</td><td>Casey Nguyen</td><td>09:31 AM</td><td>— same</td><td>e19d2c88</td><td><span class="status-pill late">LATE</span></td></tr>
+        <tr><td>6</td><td>Riley Thompson</td><td>08:41 AM</td><td>03:22 PM</td><td>f5c0a3b2</td><td><span class="status-pill on-time">ON TIME</span></td></tr>
+        <tr><td>7</td><td>Drew Martinez</td><td>08:59 AM</td><td>— same</td><td>60e7f14c</td><td><span class="status-pill on-time">ON TIME</span></td></tr>
+        <tr><td>8</td><td>Sam Patel</td><td>09:48 AM</td><td>— same</td><td>71ba3d6f</td><td><span class="status-pill late">LATE</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section id="features" style="background: var(--surface); max-width: 100%; padding: 80px 24px;">
+  <div style="max-width:1100px; margin:0 auto;">
+    <div class="section-label">Why It Works</div>
+    <div class="section-title">Everything you need, nothing you don't</div>
+    <div class="section-sub">Built specifically for UniFi Access environments that want local, fast, and transparent attendance tracking.</div>
+
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feat-icon">⚡</div>
+        <h3>Real-Time Webhook Events</h3>
+        <p>Receives <code>access.door.unlock</code> events from UniFi Access the moment a badge is tapped — no polling, no delays.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feat-icon">👤</div>
+        <h3>Automatic Name Resolution</h3>
+        <p>Translates raw UniFi actor UUIDs into real display names by syncing your user roster directly from the Access controller.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feat-icon">🟢</div>
+        <h3>ON TIME / LATE Status</h3>
+        <p>Set any daily cutoff time. The dashboard automatically marks each person's first badge as ON TIME (green) or LATE (red).</p>
+      </div>
+      <div class="feature-card">
+        <div class="feat-icon">📅</div>
+        <h3>Historical Date Browsing</h3>
+        <p>All badge events are persisted in a local SQLite database. Browse any past date with the date picker — your history, your server.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feat-icon">🔒</div>
+        <h3>HMAC-Secured Webhooks</h3>
+        <p>Every incoming event is verified with HMAC-SHA256 using your unique webhook secret, blocking spoofed or unauthorized payloads.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feat-icon">🐳</div>
+        <h3>Single Docker Container</h3>
+        <p>One <code>docker compose up -d</code> command deploys Flask + SQLite. Runs on Unraid or any Linux host with Docker installed.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- INSTALL -->
+<section id="install">
+  <div class="section-label">Get Started</div>
+  <div class="section-title">Up and running in minutes</div>
+  <div class="section-sub">Requires a UniFi OS console running Access 1.9.1+, Docker, and a local network connection to your controller.</div>
+
+  <div class="install-steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <h4>Open Firewall Port 12445</h4>
+        <p>Add a LAN IN firewall rule in UniFi Network → Settings → Firewall &amp; Security allowing TCP <code>12445</code> from your subnet to your controller IP.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <h4>Generate a Developer API Token</h4>
+        <p>In the UniFi Access app go to <code>Settings → General → Advanced → API Token</code>. Create a new token with all permission scopes and copy it immediately — it's shown only once.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <h4>Clone &amp; Configure</h4>
+        <p>Clone the repo to your Unraid server, copy <code>.env.example</code> to <code>.env</code>, and fill in your controller IP, API token, and timezone.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-body">
+        <h4>Build &amp; Start the Container</h4>
+        <p>Run <code>docker compose up -d --build</code>. The container launches Flask on port <code>8000</code>, creates the SQLite database, and immediately syncs your user roster.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">5</div>
+      <div class="step-body">
+        <h4>Register the Webhook</h4>
+        <p>From the container console, run the provided Python snippet to register your dashboard URL with UniFi Access for <code>access.door.unlock</code> events. Copy the returned secret into <code>.env</code> and rebuild.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">6</div>
+      <div class="step-body">
+        <h4>Open the Dashboard</h4>
+        <p>Navigate to <code>http://&lt;UNRAID-IP&gt;:8000/</code>. Pick a date, set your cutoff time, and watch attendance populate in real time as badges are tapped.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <p>UniFi Access Badge-In Dashboard · Open Source · Self-Hosted</p>
+  <p style="margin-top:8px;">
+    <a href="https://github.com/jasonMPM/unifi-access-dashboard" target="_blank">github.com/jasonMPM/unifi-access-dashboard</a>
+  </p>
+</footer>
+
+</body>
+</html>
